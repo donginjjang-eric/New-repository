@@ -285,6 +285,7 @@ def generate_and_store(stage_num: int):
         "used_prompt": result["prompt"],
         "review": result["review"],
         "retried": result["retried"],
+        "composited": result.get("composited", False),
         "liked": False,
     })
 
@@ -419,6 +420,8 @@ else:
             else:
                 badge_color, badge_text = "#EF4444", f"🔴 검수 {score}점 · 다시 만드세요"
             retried_mark = " · ✨ 재시도 후 개선" if r.get("retried") else ""
+            composited_mark = " · 🔒 원본 보존 합성" if r.get("composited") else ""
+            retried_mark = retried_mark + composited_mark
 
             st.markdown(
                 f"<div class='step-label'>{r['stage']}번 · {r['stage_name']}</div>",

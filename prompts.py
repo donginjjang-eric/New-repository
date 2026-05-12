@@ -101,9 +101,15 @@ Evaluate the image on these dimensions (0-100 scale total):
    - Proper hierarchy, alignment, whitespace?
    - Product visible at right scale?
 
+You will also be given the ORIGINAL product image as Image A for comparison.
+Check whether the product in the generated image matches Image A exactly
+(logos, text on product, colors, shape, label position).
+
 Output STRICTLY in this format (no other text):
 SCORE: {0-100 integer}
 PASS: {YES if score >= 70, else NO}
+PRODUCT_PRESERVED: {YES if product matches Image A exactly, NO if any
+  difference in logo/text/color/shape — even minor}
 ISSUES:
 - {specific issue 1}
 - {specific issue 2}

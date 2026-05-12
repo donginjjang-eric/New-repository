@@ -16,12 +16,7 @@ try:
 except Exception:
     HAS_SHADCN = False
 
-from openai_client import (
-    analyze_image,
-    generate_detail_image,
-    parse_analysis,
-    save_good_example,
-)
+from openai_client import generate_detail_image, save_good_example
 from prompts import STAGES
 
 st.set_page_config(
@@ -283,9 +278,6 @@ def generate_and_store(stage_num: int):
         "image_bytes": result["image_bytes"],
         "stage_name": stage["name"],
         "used_prompt": result["prompt"],
-        "review": result["review"],
-        "retried": result["retried"],
-        "composited": result.get("composited", False),
         "liked": False,
     })
 
@@ -303,8 +295,7 @@ st.markdown(
     <div class='metric-row'>
         <div class='metric-pill accent'>진행 {done_count}/5</div>
         <div class='metric-pill'>❤️ 학습 {liked_count}장</div>
-        <div class='metric-pill'>🤖 GPT-image-2</div>
-        <div class='metric-pill'>🔍 검수 자동</div>
+        <div class='metric-pill'>🤖 GPT-image-2 단독</div>
     </div>
 </div>
 """,
@@ -328,19 +319,6 @@ if uploaded is not None:
 if st.session_state.uploaded_bytes is not None:
     st.image(st.session_state.uploaded_bytes,
              caption="업로드된 상품 이미지", use_container_width=True)
-
-    if st.button("🔍 이미지에서 상품 정보 자동 추출",
-                 key="analyze", use_container_width=True):
-        with st.spinner("이미지를 분석 중이에요... (10~20초)"):
-            try:
-                mime = st.session_state.get("uploaded_mime", "image/jpeg")
-                text = analyze_image(st.session_state.uploaded_bytes, mime)
-                parsed = parse_analysis(text)
-                st.session_state.product_info.update(parsed)
-                st.success("자동 추출 완료! 아래 폼에서 수정하실 수 있어요.")
-                st.rerun()
-            except Exception as e:
-                st.error(f"분석 실패: {e}")
 
 st.markdown("## 2️⃣ 제품 정보 (선택사항)")
 st.caption("비워두셔도 되지만, 적을수록 더 잘 만들어요.")
@@ -392,13 +370,10 @@ else:
         for idx, r in enumerate(sorted_results):
             with cols[idx % 5]:
                 st.image(r["image_bytes"], use_container_width=True)
-                review = r.get("review") or {}
-                score = review.get("score", 0)
-                emoji = "🟢" if score >= 85 else ("🟡" if score >= 70 else "🔴")
                 st.markdown(
-                    f"<div style='text-align:center;font-size:0.78rem;"
-                    f"font-weight:700;color:#4E5968;margin-top:4px;'>"
-                    f"{r['stage']}번 {emoji} {score}점</div>",
+                    f"<div style='text-align:center;font-size:0.85rem;"
+                    f"font-weight:700;color:#0F172A;margin-top:6px;'>"
+                    f"{r['stage']}번</div>",
                     unsafe_allow_html=True,
                 )
         if len(sorted_results) < 5:
@@ -411,27 +386,8 @@ else:
             st.rerun()
     else:
         for r in sorted_results:
-            review = r.get("review") or {}
-            score = review.get("score", 0)
-            if score >= 85:
-                badge_color, badge_text = "#0AB36D", f"🟢 검수 {score}점 · 잘 나옴"
-            elif score >= 70:
-                badge_color, badge_text = "#F59E0B", f"🟡 검수 {score}점 · 보통"
-            else:
-                badge_color, badge_text = "#EF4444", f"🔴 검수 {score}점 · 다시 만드세요"
-            retried_mark = " · ✨ 재시도 후 개선" if r.get("retried") else ""
-            composited_mark = " · 🔒 원본 보존 합성" if r.get("composited") else ""
-            retried_mark = retried_mark + composited_mark
-
             st.markdown(
                 f"<div class='step-label'>{r['stage']}번 · {r['stage_name']}</div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"<div style='display:inline-block;padding:6px 14px;"
-                f"background:{badge_color}1A;color:{badge_color};"
-                f"border-radius:999px;font-weight:700;font-size:0.95rem;"
-                f"margin-bottom:12px;'>{badge_text}{retried_mark}</div>",
                 unsafe_allow_html=True,
             )
             st.image(r["image_bytes"], use_container_width=True)
@@ -449,7 +405,7 @@ else:
             with col_redo:
                 if st.button(f"🔄 다시 만들기", key=f"redo_{r['stage']}",
                              use_container_width=True):
-                    with st.spinner(f"{r['stage']}번 다시 만드는 중... (50~90초)"):
+                    with st.spinner(f"{r['stage']}번 다시 만드는 중... 30~60초"):
                         try:
                             generate_and_store(r["stage"])
                             st.rerun()
@@ -472,19 +428,8 @@ else:
                     except Exception as e:
                         st.error(f"저장 실패: {e}")
 
-            if review.get("issues") or review.get("suggestions"):
-                with st.expander("🔍 검수 결과 자세히 보기"):
-                    if review.get("issues"):
-                        st.markdown("**부족한 점**")
-                        for it in review["issues"]:
-                            st.markdown(f"- {it}")
-                    if review.get("suggestions"):
-                        st.markdown("**개선 제안**")
-                        for it in review["suggestions"]:
-                            st.markdown(f"- {it}")
-
             if r.get("used_prompt"):
-                with st.expander("🧠 GPT가 만든 디자인 프롬프트 보기"):
+                with st.expander("🧠 보낸 프롬프트 보기"):
                     st.text(r["used_prompt"])
             st.markdown("---")
 
@@ -499,7 +444,7 @@ else:
 
 with st.sidebar:
     st.markdown("### 🎨 단계별 생성")
-    st.caption("순서대로 눌러보세요.\n디자인 → 생성 → 검수 3단계로 진행됩니다.\n한 단계당 약 50~90초 (재시도 시 더 걸림).")
+    st.caption("순서대로 눌러보세요. gpt-image-2가 직접 만듭니다.\n한 단계당 약 30~60초.")
     st.markdown("")
 
     can_generate = st.session_state.uploaded_bytes is not None
@@ -512,9 +457,7 @@ with st.sidebar:
         if st.button(label, key=f"side_gen_{i}",
                      disabled=not can_generate,
                      use_container_width=True):
-            with st.spinner(f"{i}번 ({stage['name']}) 작업 중...\n"
-                            f"1/3: 디자인 프롬프트 → 2/3: 이미지 생성 → "
-                            f"3/3: 검수 (총 50~90초, 재시도 시 더 걸림)"):
+            with st.spinner(f"{i}번 ({stage['name']}) 생성 중... 30~60초"):
                 try:
                     generate_and_store(i)
                     st.rerun()

@@ -10,6 +10,12 @@ try:
 except Exception:
     pass
 
+try:
+    import streamlit_shadcn_ui as ui
+    HAS_SHADCN = True
+except Exception:
+    HAS_SHADCN = False
+
 from openai_client import (
     analyze_image,
     generate_detail_image,
@@ -54,138 +60,164 @@ st.markdown(
     """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap');
-    html, body, [class*="css"] { font-family: 'Pretendard', -apple-system, sans-serif; }
+    html, body, [class*="css"], button, input, textarea {
+        font-family: 'Pretendard', -apple-system, sans-serif !important;
+    }
 
+    /* 전체 배경 - shadcn 느낌의 미세한 회색 */
+    .stApp { background: #FAFAFA; }
     .main .block-container { padding-top: 1.5rem; max-width: 760px; }
+
+    /* 사이드바 — 메인과 명확히 구분 */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #FAFBFC 0%, #F2F4F6 100%);
-        border-right: 1px solid #E5E8EB;
+        background: #0F172A !important;
+        border-right: none;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.08);
     }
     section[data-testid="stSidebar"] .block-container { padding-top: 2rem; }
-
-    h1 { font-size: 2.4rem !important; font-weight: 900 !important;
-         letter-spacing: -0.04em; }
-    h2 { font-size: 1.35rem !important; font-weight: 800 !important;
-         margin-top: 2.2rem !important; letter-spacing: -0.02em; }
-
-    /* 헤더 영역 */
-    .hero-header {
-        background: linear-gradient(135deg, #0064FF 0%, #6B47FF 50%, #00C2FF 100%);
-        padding: 28px 24px; border-radius: 24px; color: white;
-        margin-bottom: 24px;
-        box-shadow: 0 12px 32px rgba(0,100,255,0.18);
+    section[data-testid="stSidebar"] * { color: #E2E8F0 !important; }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 { color: white !important; }
+    section[data-testid="stSidebar"] .stButton > button {
+        background: #1E293B !important;
+        color: #F1F5F9 !important;
+        border: 1px solid #334155 !important;
+        box-shadow: none !important;
+        font-weight: 600 !important;
     }
-    .hero-header h1 {
-        color: white !important; margin: 0 0 6px 0 !important;
-        font-size: 2rem !important; font-weight: 900 !important;
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: #334155 !important;
+        border-color: #475569 !important;
+        transform: none;
     }
-    .hero-header p { color: rgba(255,255,255,0.92); margin: 0;
-        font-size: 1rem; font-weight: 500; }
-    .hero-stats {
-        display: flex; gap: 16px; margin-top: 16px;
-    }
-    .hero-stat {
-        background: rgba(255,255,255,0.15); padding: 8px 14px;
-        border-radius: 12px; font-size: 0.85rem; font-weight: 700;
-        backdrop-filter: blur(8px);
+    section[data-testid="stSidebar"] .stButton > button:disabled {
+        background: #1E293B !important;
+        color: #64748B !important;
+        opacity: 0.5;
     }
 
-    /* 진행 트래커 */
+    /* 헤드 폰트 */
+    h1 { font-size: 1.9rem !important; font-weight: 800 !important;
+         letter-spacing: -0.03em; color: #0F172A; }
+    h2 { font-size: 1.3rem !important; font-weight: 700 !important;
+         margin-top: 2rem !important; letter-spacing: -0.02em; color: #0F172A; }
+
+    /* shadcn-스타일 카드 영역 (헤더 박스) */
+    .shadcn-card {
+        background: white;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .shadcn-card h1 { margin-top: 0 !important; margin-bottom: 8px !important; }
+    .shadcn-card .desc {
+        color: #64748B; font-size: 0.95rem;
+        margin-bottom: 16px;
+    }
+    .metric-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .metric-pill {
+        background: #F1F5F9; padding: 6px 12px;
+        border-radius: 8px; font-size: 0.82rem;
+        font-weight: 600; color: #475569;
+        border: 1px solid #E2E8F0;
+    }
+    .metric-pill.accent { background: #0F172A; color: white; border: none; }
+
+    /* 진행 트래커 — 가독성 강화 */
     .progress-tracker {
         display: flex; align-items: center; justify-content: space-between;
-        background: white; padding: 14px 12px; border-radius: 16px;
-        margin-bottom: 16px; border: 1px solid #E5E8EB;
+        background: white; padding: 16px 14px; border-radius: 12px;
+        margin-bottom: 20px; border: 1px solid #E2E8F0;
     }
     .progress-step {
-        display: flex; flex-direction: column; align-items: center; gap: 4px;
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        flex-shrink: 0;
     }
     .progress-dot {
-        width: 28px; height: 28px; border-radius: 50%;
+        width: 32px; height: 32px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        font-size: 0.8rem; font-weight: 800; transition: all 0.3s;
+        font-size: 0.85rem; font-weight: 800; transition: all 0.3s;
+        border: 2px solid;
     }
     .progress-dot.done {
-        background: linear-gradient(135deg, #0064FF, #00C2FF);
-        color: white; box-shadow: 0 4px 12px rgba(0,100,255,0.3);
+        background: #0F172A; color: white; border-color: #0F172A;
     }
     .progress-dot.todo {
-        background: #F2F4F6; color: #8B95A1;
+        background: white; color: #94A3B8; border-color: #CBD5E1;
     }
-    .progress-line { flex: 1; height: 2px; background: #E5E8EB; margin: 0 4px;
-        margin-bottom: 14px; }
-    .progress-line.done { background: linear-gradient(90deg, #0064FF, #00C2FF); }
+    .progress-line { flex: 1; height: 2px; background: #E2E8F0; margin: 0 4px;
+        margin-bottom: 18px; min-width: 12px; }
+    .progress-line.done { background: #0F172A; }
     .progress-label {
-        font-size: 0.65rem; font-weight: 600; color: #4E5968;
+        font-size: 0.7rem; font-weight: 700; color: #475569;
         white-space: nowrap;
     }
+    .progress-dot.done + .progress-label,
+    .progress-step:has(.progress-dot.done) .progress-label { color: #0F172A; }
 
-    /* 버튼 */
+    /* 버튼 — shadcn 미니멀 */
     .stButton > button {
-        width: 100%; min-height: 60px; font-size: 1.05rem; font-weight: 700;
-        border-radius: 16px; border: none; letter-spacing: -0.01em;
-        background: linear-gradient(135deg, #0064FF 0%, #00C2FF 100%);
-        color: white; transition: all 0.2s; margin-bottom: 8px;
-        box-shadow: 0 4px 12px rgba(0,100,255,0.15);
+        width: 100%; min-height: 48px; font-size: 0.95rem; font-weight: 600;
+        border-radius: 10px; border: 1px solid #E2E8F0;
+        background: white; color: #0F172A;
+        transition: all 0.15s; margin-bottom: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        letter-spacing: -0.01em;
     }
-    .stButton > button:hover { transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,100,255,0.35); }
+    .stButton > button:hover {
+        background: #F8FAFC; border-color: #CBD5E1;
+        transform: translateY(-1px);
+    }
     .stButton > button:disabled {
-        background: #F2F4F6; color: #8B95A1; cursor: not-allowed;
-        box-shadow: none;
+        background: #F8FAFC; color: #94A3B8;
+        border-color: #E2E8F0; cursor: not-allowed; transform: none;
     }
     .stDownloadButton > button {
-        background: white !important; color: #0064FF !important;
-        border: 2px solid #0064FF !important; min-height: 48px;
-        box-shadow: none !important;
+        background: #0F172A !important; color: white !important;
+        border: none !important; min-height: 44px;
+    }
+    .stDownloadButton > button:hover {
+        background: #1E293B !important;
     }
 
     /* 입력 폼 */
     .stTextInput input, .stTextArea textarea {
-        font-size: 1.05rem !important; border-radius: 14px !important;
-        border: 2px solid #E5E8EB !important; padding: 14px !important;
-        transition: border-color 0.2s, box-shadow 0.2s;
+        font-size: 0.95rem !important; border-radius: 8px !important;
+        border: 1px solid #E2E8F0 !important; padding: 10px 12px !important;
+        background: white !important;
     }
     .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #0064FF !important;
-        box-shadow: 0 0 0 4px rgba(0,100,255,0.1) !important;
+        border-color: #0F172A !important;
+        box-shadow: 0 0 0 3px rgba(15,23,42,0.08) !important;
     }
     .stFileUploader {
-        border-radius: 20px; padding: 24px;
-        background: linear-gradient(135deg, #FAFBFC, #F2F4F6);
-        border: 2px dashed #D1D6DB;
+        border-radius: 12px; padding: 20px;
+        background: white;
+        border: 2px dashed #CBD5E1;
     }
 
     /* 결과 카드 */
     .step-label {
-        display: inline-block; padding: 6px 16px;
-        background: linear-gradient(135deg, #E8F3FF, #F0F9FF);
-        color: #0064FF; border-radius: 999px;
-        font-weight: 800; font-size: 0.95rem; margin-bottom: 12px;
+        display: inline-block; padding: 6px 12px;
+        background: #0F172A; color: white;
+        border-radius: 8px;
+        font-weight: 700; font-size: 0.85rem; margin-bottom: 12px;
         letter-spacing: -0.01em;
     }
     div[data-testid="stImage"] img {
-        border-radius: 16px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        border-radius: 12px;
+        border: 1px solid #E2E8F0;
     }
 
     /* 뷰 토글 */
-    .stRadio > div { flex-direction: row !important; gap: 8px !important; }
+    .stRadio > div { flex-direction: row !important; gap: 4px !important; }
     .stRadio label {
-        background: white; padding: 8px 16px; border-radius: 12px;
-        border: 2px solid #E5E8EB; cursor: pointer;
-        font-weight: 700 !important;
-    }
-
-    /* 갤러리 그리드 카드 */
-    .gallery-card {
-        background: white; border-radius: 16px; padding: 12px;
-        border: 1px solid #E5E8EB; text-align: center;
-        transition: transform 0.2s;
-    }
-    .gallery-card:hover { transform: translateY(-4px); }
-    .gallery-stage-name {
-        font-size: 0.8rem; font-weight: 700; color: #4E5968;
-        margin-top: 8px;
+        background: white; padding: 6px 14px; border-radius: 8px;
+        border: 1px solid #E2E8F0; cursor: pointer;
+        font-weight: 600 !important; font-size: 0.9rem;
     }
 </style>
 """,
@@ -256,13 +288,14 @@ liked_count = sum(1 for r in st.session_state.results if r.get("liked"))
 
 st.markdown(
     f"""
-<div class='hero-header'>
-    <h1>🎨 상세페이지 자동 생성</h1>
-    <p>이미지 한 장으로 챗GPT가 상세페이지 5장을 만들어드려요</p>
-    <div class='hero-stats'>
-        <div class='hero-stat'>📦 진행 {done_count}/5</div>
-        <div class='hero-stat'>❤️ 학습 {liked_count}장</div>
-        <div class='hero-stat'>🤖 GPT-image-2</div>
+<div class='shadcn-card'>
+    <h1>상세페이지 자동 생성</h1>
+    <div class='desc'>이미지 한 장으로 챗GPT가 상세페이지 5장을 만들어드립니다.</div>
+    <div class='metric-row'>
+        <div class='metric-pill accent'>진행 {done_count}/5</div>
+        <div class='metric-pill'>❤️ 학습 {liked_count}장</div>
+        <div class='metric-pill'>🤖 GPT-image-2</div>
+        <div class='metric-pill'>🔍 검수 자동</div>
     </div>
 </div>
 """,

@@ -79,6 +79,12 @@ st.markdown(
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3 { color: white !important; }
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+    section[data-testid="stSidebar"] small,
+    section[data-testid="stSidebar"] p {
+        color: #CBD5E1 !important;
+        opacity: 1 !important;
+    }
     section[data-testid="stSidebar"] .stButton > button {
         background: #1E293B !important;
         color: #F1F5F9 !important;
@@ -128,35 +134,35 @@ st.markdown(
 
     /* 진행 트래커 — 가독성 강화 */
     .progress-tracker {
-        display: flex; align-items: center; justify-content: space-between;
-        background: white; padding: 16px 14px; border-radius: 12px;
+        display: flex; align-items: flex-start; justify-content: space-between;
+        background: white; padding: 18px 16px; border-radius: 12px;
         margin-bottom: 20px; border: 1px solid #E2E8F0;
     }
     .progress-step {
-        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
         flex-shrink: 0;
     }
     .progress-dot {
-        width: 32px; height: 32px; border-radius: 50%;
+        width: 36px; height: 36px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        font-size: 0.85rem; font-weight: 800; transition: all 0.3s;
+        font-size: 0.9rem; font-weight: 800; transition: all 0.3s;
         border: 2px solid;
     }
     .progress-dot.done {
         background: #0F172A; color: white; border-color: #0F172A;
     }
     .progress-dot.todo {
-        background: white; color: #94A3B8; border-color: #CBD5E1;
+        background: white; color: #475569; border-color: #94A3B8;
     }
-    .progress-line { flex: 1; height: 2px; background: #E2E8F0; margin: 0 4px;
-        margin-bottom: 18px; min-width: 12px; }
+    .progress-line { flex: 1; height: 2px; background: #CBD5E1;
+        margin-top: 17px; min-width: 8px; align-self: flex-start; }
     .progress-line.done { background: #0F172A; }
     .progress-label {
-        font-size: 0.7rem; font-weight: 700; color: #475569;
-        white-space: nowrap;
+        font-size: 0.78rem; font-weight: 700;
+        white-space: nowrap; line-height: 1.2;
     }
-    .progress-dot.done + .progress-label,
-    .progress-step:has(.progress-dot.done) .progress-label { color: #0F172A; }
+    .progress-label.done { color: #0F172A; }
+    .progress-label.todo { color: #334155; }
 
     /* 버튼 — shadcn 미니멀 */
     .stButton > button {
@@ -236,6 +242,9 @@ if "total_generated" not in st.session_state:
     st.session_state.total_generated = 0
 
 
+SHORT_LABELS = {1: "후킹", 2: "공감", 3: "특징", 4: "신뢰", 5: "구매유도"}
+
+
 def _render_progress_tracker() -> str:
     """1-2-3-4-5 도트 진행 시각화 HTML."""
     done_stages = {r["stage"] for r in st.session_state.results}
@@ -244,11 +253,10 @@ def _render_progress_tracker() -> str:
         is_done = i in done_stages
         dot_class = "done" if is_done else "todo"
         check = "✓" if is_done else str(i)
-        stage_short = STAGES[i]["name"].split("(")[0].strip()[:4]
         parts.append(
             f"<div class='progress-step'>"
             f"<div class='progress-dot {dot_class}'>{check}</div>"
-            f"<div class='progress-label'>{stage_short}</div>"
+            f"<div class='progress-label {dot_class}'>{SHORT_LABELS[i]}</div>"
             f"</div>"
         )
         if i < 5:
